@@ -1,99 +1,93 @@
-**Tutorial Completo: Configuración de SSH y LAMP en Debian VM con Troubleshooting**
+# Entrega: Configuración Completa de SSH y LAMP en Debian VM
 
-Este manual reúne paso a paso todo lo realizado para:
+Este documento reúne de forma ordenada y con formato final el tutorial paso a paso, incluyendo todos los comandos, explicaciones y soluciones (*troubleshooting*) necesarias para:
 
-1. importar la VM,
-2. recuperar contraseña root,
-3. habilitar acceso SSH por clave,
-4. instalar y configurar Apache + PHP + MariaDB,
-5. configurar red estática,
-6. añadir, particionar y montar un segundo disco,
-7. montar automáticamente en `/etc/fstab`,
-8. mover el sitio web a un volumen dedicado,
-9. configurar `/proc`,
-10. crear script de backup y cron,
-11. depurar y añadir extensión mysqli.
-
-Incluye troubleshooting para cada problema encontrado.
+1. Importar una VM Debian en VirtualBox.
+2. Recuperar y cambiar la contraseña `root`.
+3. Configurar acceso SSH mediante clave.
+4. Instalar y configurar Apache + PHP + MariaDB.
+5. Establecer red estática.
+6. Añadir, particionar y montar un segundo disco.
+7. Automatizar montajes con `/etc/fstab`.
+8. Mover el sitio web a un volumen dedicado.
+9. Ajustar permisos y accesos en Apache.
+10. Probar y depurar PHP.
+11. Instalar extensión `mysqli`.
+12. Crear los tarballs de entrega y subirlos al repositorio.
+13. Próximos pasos: `/proc`, script de backup y cron.
 
 ---
 
 ## 1. Descarga y ensamblado de la VM
 
-1. Descarga los archivos `TPVMCA.part01.rar` … `TPVMCA.part09.rar` desde Blackboard.
-2. En Windows, con WinRAR o 7-Zip, haz clic derecho en **TPVMCA.part01.rar** → **Extraer aquí**. Esto genera `TPVMCA.ova`.
+1. Descargar los archivos: `TPVMCA.part01.rar` … `TPVMCA.part09.rar` desde Blackboard.
+2. En Windows, con WinRAR o 7-Zip:
 
-**Troubleshooting:**
+   ```text
+   C:\Descargas> Right-click TPVMCA.part01.rar → Extract Here
+   ```
 
-* Error de volumen faltante: verifica que todos los `.rar` existen y no están renombrados.
+   Genera `TPVMCA.ova`.
 
----
-
-## 2. Importar la VM en VirtualBox
-
-1. Abre Oracle VirtualBox.
-2. **Archivo › Importar aplicación virtualizada…**, selecciona `TPVMCA.ova`.
-3. Acepta valores por defecto. Ajusta RAM (≥2 GB) y CPU (≥2 núcleos) si deseas.
-
-**Troubleshooting:**
-
-* Si sale “OVF version unknown”, actualiza VirtualBox.
+> **Troubleshooting:**
+>
+> * Si falta un volumen, revisa que los `.rar` estén completos y sin renombrar.
 
 ---
 
-## 3. Arranque en modo single-user y cambio de contraseña `root`
+## 2. Importar en VirtualBox
 
-1. Inicia la VM. En GRUB selecciona **Debian GNU/Linux** y pulsa **e**.
-2. En la línea que empieza por `linux /boot/vmlinuz… ro quiet`, añade al final: `init=/bin/bash`.
-3. Pulsa **Ctrl+X** para arrancar en shell.
-4. Monta `/` en lectura-escritura:
+1. Abre **Oracle VirtualBox**.
+2. **Archivo → Importar aplicación virtualizada...**, selecciona `TPVMCA.ova`.
+3. Acepta valores por defecto.
+4. Opcional: asigna ≥2 GB RAM y ≥2 CPUs.
+
+> **Troubleshooting:**
+>
+> * Si sale “OVF version unknown”, actualiza VirtualBox.
+
+---
+
+## 3. Modo single-user y cambio de contraseña `root`
+
+1. Iniciar VM. En GRUB, marca **Debian GNU/Linux** y pulsa `e`.
+2. Añade al final de la línea `linux … ro quiet`: `init=/bin/bash`.
+3. Arrancar: **Ctrl+X**.
+4. En el shell raíz (`bash`):
 
    ```bash
    mount -o remount,rw /
-   ```
-5. Cambia la contraseña de root:
-
-   ```bash
-   passwd root
-   # escribe “palermo” (o la que prefieras)
-   ```
-6. Continúa el arranque normal:
-
-   ```bash
+   passwd root    # nueva contraseña "palermo"
    exec /sbin/init
    ```
 
-**Troubleshooting:**
-
-* Si arranca sin cambios, revisa que `init=/bin/bash` esté en la misma línea del kernel.
-
----
-
-## 4. Configuración de red y acceso a Internet
-
-1. Obtén la interfaz y solicita DHCP si no hay IP:
-
-   ```bash
-   ip addr show
-   dhclient enp0s3
-   ```
-2. Comprueba conectividad:
-
-   ```bash
-   ping -c 4 8.8.8.8
-   ping -c 4 deb.debian.org
-   ```
-3. Si falla DNS, edita `/etc/resolv.conf`:
-
-   ```text
-   nameserver 8.8.8.8
-   ```
+> **Troubleshooting:**
+>
+> * Si el shell sigue de solo lectura, comprueba que `init=/bin/bash` esté en la línea correcta.
 
 ---
 
-## 5. Configuración de repositorios APT
+## 4. Configuración de red e Internet
 
-1. Crea `/etc/apt/sources.list`:
+```bash
+ip addr show
+# Si no hay IP:
+dhclient enp0s3
+ping -c4 8.8.8.8
+ping -c4 deb.debian.org
+```
+
+En caso de problemas DNS, edita `/etc/resolv.conf`:
+
+```text
+nameserver 8.8.8.8
+```
+
+---
+
+## 5. Repositorios APT
+
+1. Crear `/etc/apt/sources.list`:
 
    ```bash
    cat << 'EOF' > /etc/apt/sources.list
@@ -101,154 +95,160 @@ Incluye troubleshooting para cada problema encontrado.
    deb http://deb.debian.org/debian-security bullseye-security main contrib non-free
    deb http://deb.debian.org/debian bullseye-updates main contrib non-free
    EOF
+   apt update
    ```
-2. `apt update`
 
-**Troubleshooting:**
-
-* Si no puedes escribir `<`, usa `echo` con redirección `>` y `>>`.
+> **Troubleshooting:**
+>
+> * Si no puedes escribir `<`, usa `echo "..." >` y `>>`.
 
 ---
 
-## 6. Instalación de OpenSSH Server y configuración de SSH por clave
+## 6. Instalación de OpenSSH y acceso por clave
 
-1. Instala SSH:
+### 6.1 Instalar
 
-   ```bash
-   apt install -y openssh-server
-   systemctl status ssh
-   ```
-2. Prepara `/root/.ssh`:
+```bash
+apt install -y openssh-server
+systemctl status ssh
+```
 
-   ```bash
-   mkdir -p /root/.ssh
-   chmod 700 /root/.ssh
-   ```
-3. Habilita password auth temporal y root login:
+### 6.2 Preparar clave pública
 
-   ```bash
-   sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
-   sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin yes/'      /etc/ssh/sshd_config
-   systemctl restart ssh
-   ```
-4. Configura port‑forwarding NAT en VirtualBox:
+```bash
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+```
 
-   * NAT › Avanzado › Reenvío de puertos: `127.0.0.1:2222 → 22`
-5. Desde Windows PowerShell copia la clave pública:
+### 6.3 Autenticación por contraseña temporal
 
-   ```powershell
-   cd "C:\Users\Fabri\Documents\…\claves"
-   scp -i .\clave_privada.txt -P 2222 .\clave_publica.pub root@127.0.0.1:/root/
-   ```
-6. En la VM:
+```bash
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin yes/'      /etc/ssh/sshd_config
+systemctl restart ssh
+```
 
-   ```bash
-   cat /root/clave_publica.pub >> /root/.ssh/authorized_keys
-   chmod 600 /root/.ssh/authorized_keys
-   rm /root/clave_publica.pub
-   ```
-7. Deshabilita password auth y root login por contraseña:
+### 6.4 Port-forwarding NAT en VirtualBox
 
-   ```bash
-   sed -i 's/^PasswordAuthentication .*/PasswordAuthentication no/'             /etc/ssh/sshd_config
-   sed -i 's/^PermitRootLogin .*/PermitRootLogin prohibit-password/'           /etc/ssh/sshd_config
-   systemctl restart ssh
-   ```
-8. Prueba SSH desde Windows:
+* NAT → Avanzado → Reenvío de puertos: `127.0.0.1:2222 → 22`
 
-   ```powershell
-   ssh -i .\clave_privada.txt -p 2222 root@127.0.0.1
-   ```
+### 6.5 Copiar clave pública
 
-**Troubleshooting:**
+```powershell
+cd "C:\Users\Fabri\Documents\...\claves"
+scp -i .\clave_privada.txt -P 2222 .\clave_publica.pub root@127.0.0.1:/root/
+```
 
-* Errores de SCP: verifica passphrase, password root, port‑forward.
-* Si no puedes pegar en VirtualBox, copia con SCP o carpeta compartida.
+en la VM:
 
----
+```bash
+cat /root/clave_publica.pub >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+rm /root/clave_publica.pub
+```
 
-## 7. Instalación de Apache y PHP ≥ 7.3
+### 6.6 Deshabilitar contraseña
 
-1. `apt install -y apache2 php libapache2-mod-php`
-2. `systemctl status apache2` debe estar **active (running)**
-3. Monta carpeta compartida Blackboard si la usas:
+```bash
+sed -i 's/^PasswordAuthentication .*/PasswordAuthentication no/'             /etc/ssh/sshd_config
+sed -i 's/^PermitRootLogin .*/PermitRootLogin prohibit-password/'           /etc/ssh/sshd_config
+systemctl restart ssh
+```
 
-   ```bash
-   mkdir -p /mnt/blackboard
-   mount -t vboxsf Blackboard /mnt/blackboard
-   ```
-4. Copia tu web:
+### 6.7 Probar SSH
 
-   ```bash
-   cp /mnt/blackboard/index.php /var/www/html/
-   cp /mnt/blackboard/logo.png   /var/www/html/
-   chown www-data:www-data /var/www/html/*
-   chmod 644               /var/www/html/*
-   ```
+```powershell
+ssh -i .\clave_privada.txt -p 2222 root@127.0.0.1
+```
 
-**Troubleshooting:**
-
-* Si index.php sale en blanco, revisa logs en `/var/log/apache2/error.log`.
+> **Troubleshooting:**
+>
+> * `scp` pide password: revisa passphrase / password root.
+> * `Connection timed out`: revisa port-forward y VM encendida.
 
 ---
 
-## 8. Instalación y configuración de MariaDB
+## 7. Apache + PHP ≥ 7.3
 
-1. `apt install -y mariadb-server mariadb-client`
-2. `systemctl enable --now mariadb` (o `mysql` según unidad)
-3. `systemctl status mariadb` debe mostrar **active (running)**
-4. Importa tu script:
+```bash
+apt install -y apache2 php libapache2-mod-php
+systemctl status apache2
+```
 
-   ```bash
-   mariadb -u root < /root/db.sql
-   ```
-5. Verifica:
+Copia tu web:
 
-   ```bash
-   mariadb -u root -e "SHOW DATABASES;"
-   ```
+```bash
+cp /mnt/blackboard/index.php /var/www/html/
+cp /mnt/blackboard/logo.png   /var/www/html/
+chown www-data:www-data /var/www/html/*
+chmod 644 /var/www/html/*
+```
 
-**Troubleshooting:**
-
-* Si da socket error, arranca el servicio correcto.
-
----
-
-## 9. Configuración de IP estática
-
-1. `vi /etc/network/interfaces`
-2. Añade:
-
-   ```text
-   auto enp0s3
-   iface enp0s3 inet static
-     address 10.0.2.15
-     netmask 255.255.255.0
-     gateway 10.0.2.2
-     dns-nameservers 8.8.8.8 8.8.4.4
-   ```
-3. `systemctl restart networking`
-4. Verifica con `ip addr show enp0s3` y `ping`.
+> **Troubleshooting:**
+>
+> * Blanco en PHP: revisa `/var/log/apache2/error.log`.
 
 ---
 
-## 10. Añadir un segundo disco de 10 GB en VirtualBox
+## 8. MariaDB
 
-**Host Windows:**
+```bash
+apt install -y mariadb-server mariadb-client
+systemctl enable --now mariadb
+systemctl status mariadb
+```
+
+Importa dump:
+
+```bash
+mariadb -u root < /root/db.sql
+mariadb -u root -e "SHOW DATABASES;"
+```
+
+> **Troubleshooting:**
+>
+> * Socket error: arranca la unidad correcta (`mariadb.service`).
+
+---
+
+## 9. Red estática
+
+Edita `/etc/network/interfaces`:
+
+```text
+auto enp0s3
+iface enp0s3 inet static
+  address 10.0.2.15
+  netmask 255.255.255.0
+  gateway 10.0.2.2
+  dns-nameservers 8.8.8.8 8.8.4.4
+```
+
+```bash
+systemctl restart networking
+ip addr show enp0s3
+```
+
+---
+
+## 10. Segundo disco 10 GB en VirtualBox
+
+**Host:**
 
 1. Apaga VM.
-2. Configuración → Almacenamiento → Controlador SATA → Añadir disco → Crear VDI 10 GB.
+2. Configuración → Almacenamiento → SATA → + disco → VDI 10 GB.
 3. Inicia VM.
 
-**VM Debian:**
-4\. `lsblk` → detecta `/dev/sdc` de 10 GB.
-5\. `fdisk /dev/sdc`:
+**VM:**
 
-* `n` → `p` → `1` → **Enter** → `+3G` → **Enter**
-* `n` → `p` → `2` → **Enter** → `+6G` → **Enter**
-* `w` → **Enter**
-
-6. `lsblk /dev/sdc` debe mostrar `sdc1` (3 G) y `sdc2` (6 G).
+```bash
+lsblk  # detecta /dev/sdc
+fdisk /dev/sdc
+# n p 1 <Enter> +3G
+# n p 2 <Enter> +6G
+# w
+lsblk /dev/sdc
+```
 
 ---
 
@@ -265,26 +265,18 @@ df -h | grep -E '/www_dir|/backup_dir'
 
 ---
 
-## 12. Automontaje en `/etc/fstab`
+## 12. Automontaje (`/etc/fstab`)
 
-1. Obtén UUIDs:
-
-   ```bash
-   blkid /dev/sdc1 /dev/sdc2
-   ```
-2. Edita `/etc/fstab` y añade:
-
-   ```text
-   UUID=8f2880d-68a0-4db7-bd8c-19733c5ea5a7  /www_dir    ext4  defaults  0 2
-   UUID=f675a643-5101-4280-861d-97061f74483e  /backup_dir ext4  defaults  0 2
-   ```
-3. Prueba:
-
-   ```bash
-   umount /www_dir /backup_dir
-   mount -a
-   df -h | grep dir
-   ```
+```bash
+blkid /dev/sdc1 /dev/sdc2
+vi /etc/fstab
+# Añade:
+# UUID=<tu-UUID-sdc1> /www_dir    ext4 defaults 0 2
+# UUID=<tu-UUID-sdc2> /backup_dir ext4 defaults 0 2
+umount /www_dir /backup_dir
+mount -a
+df -h | grep dir
+```
 
 ---
 
@@ -301,40 +293,44 @@ vi /etc/apache2/sites-available/000-default.conf
 systemctl start apache2
 ```
 
-**Troubleshooting:** si 403, añade en `/etc/apache2/apache2.conf`:
-
-```apache
-<Directory /www_dir>
-    Options Indexes FollowSymLinks
-    AllowOverride None
-    Require all granted
-</Directory>
-```
-
-`systemctl reload apache2`
-
----
-
-## 14. Chequeo de Apache sin GUI
-
-**Dentro de la VM**:
-
-```bash
-curl -I http://localhost   # 200 OK
-```
-
-**Desde Windows** (port-forward 8080→80):
-
-```powershell
-curl http://127.0.0.1:8080 -UseBasicParsing
-Test-NetConnection -ComputerName 127.0.0.1 -Port 8080
-```
+> **403 Forbidden:**
+> Añade en `/etc/apache2/apache2.conf`:
+>
+> ```apache
+> <Directory /www_dir>
+>   Options Indexes FollowSymLinks
+>   AllowOverride None
+>   Require all granted
+> </Directory>
+> ```
+>
+> `systemctl reload apache2`
 
 ---
 
-## 15. Prueba PHP y logs
+## 14. Verificación de la página web
 
-1. Crea `/www_dir/test.php`:
+Para confirmar que Apache sirve tu web correctamente desde tu navegador de Windows:
+
+1. **Configura el reenvío de puertos HTTP** si no lo hiciste antes:
+
+   * VirtualBox NAT → Avanzado → Reenvío de puertos → 127.0.0.1:8080 → 80
+2. **Arranca la VM** y asegúrate de que Apache está activo:
+
+   ```bash
+   systemctl status apache2
+   ```
+3. **En Windows abre Chrome** (u otro navegador) y visita:
+
+   ```text
+   http://127.0.0.1:8080/
+   ```
+
+   — Deberías ver tu `index.php` con el `logo.png` cargado.
+
+## 15. Depurar PHP y logs Depurar PHP y logs
+
+1. `test.php`:
 
    ```bash
    cat > /www_dir/test.php << 'EOF'
@@ -342,36 +338,106 @@ Test-NetConnection -ComputerName 127.0.0.1 -Port 8080
    EOF
    systemctl reload apache2
    ```
-2. Visita `http://127.0.0.1:8080/test.php` o `curl http://localhost/test.php`.
-3. Si sale en blanco, revisa:
+2. Visitar `/test.php` o `curl http://localhost/test.php`.
+3. Si no carga, habilita el módulo:
 
    ```bash
    apache2ctl -M | grep php
-   vi /etc/apache2/mods-enabled/dir.conf   # DirectoryIndex index.php
+   a2enmod php7.x
+   systemctl restart apache2
    ```
-4. Logs de errores:
+4. Logs:
 
    ```bash
-   tail -n 20 /var/log/apache2/error.log
+   tail -n20 /var/log/apache2/error.log
    ```
 
 ---
 
-## 16. Habilitar la extensión MySQLi en PHP
+## 16. Instalar extensión `mysqli`
 
 ```bash
 apt install -y php-mysql
 systemctl restart apache2
 ```
 
-Prueba tu `index.php` y revisa logs si surge algo.
+Tu `index.php` ya debe funcionar.
 
 ---
 
-## 17. Tareas pendientes (próxima entrega)
+## 17. Crear tarballs de entrega
 
-* Crear enlace `/proc/partitions` en `/proc/particion`.
-* Escribir script de backup completo en `/opt/scripts/backup_full.sh`.
-* Programar cron jobs para respaldos.
+**En la VM**:
 
-*Fin del tutorial de hoy.*
+1. Crea y entra al directorio temporal:
+
+   ```bash
+   mkdir -p /tmp/entrega && cd /tmp/entrega
+   ```
+2. Genera cada archivo:
+
+   ```bash
+   tar -czpf root.tar.gz       -C /       root
+   tar -czpf etc.tar.gz        -C /       etc
+   tar -czpf opt.tar.gz        -C /       opt
+   tar -czpf proc.tar.gz       -C /       proc --ignore-failed-read
+   tar -czpf www_dir.tar.gz    -C /       www_dir
+   tar -czpf backup_dir.tar.gz -C /       backup_dir
+   ```
+3. Verifica:
+
+   ```bash
+   ls -lh /tmp/entrega
+   ```
+
+> **Troubleshooting:**
+>
+> * Si `/tmp/entrega` está vacío, asegúrate de haber ejecutado `cd /tmp/entrega` antes de los `tar`.
+> * Para archivar solo la subcarpeta fija de `/proc`, usa:
+>
+>   ```bash
+>   tar -czpf proc_particion.tar.gz -C / proc/particion
+>   ```
+
+---
+
+## 18. Descargar tarballs a Windows y subir a GitHub
+
+**En Windows PowerShell** (carpeta del repo):
+
+1. Copia todos los `.tar.gz`:
+
+   ```powershell
+   scp -i .\clave_privada.txt -P 2222 root@127.0.0.1:/tmp/entrega\*.tar.gz .\
+   ```
+2. Verifica:
+
+   ```powershell
+   dir *.tar.gz
+   ```
+3. Añade a Git y sube:
+
+   ```powershell
+   git add *.tar.gz
+   git commit -m "Primera entrega: tarballs de /root,/etc,/opt,/proc,/www_dir,/backup_dir"
+   git push
+   ```
+
+> **Troubleshooting:**
+>
+> * Remote readdir error: confirma que `/tmp/entrega` existe y contiene `.tar.gz`.
+> * Si falla con wildcard, prueba uno por uno:
+>
+>   ```powershell
+>   scp -i .\clave_privada.txt -P 2222 root@127.0.0.1:/tmp/entrega/root.tar.gz .\
+>   ```
+
+---
+
+## 19. Próximos pasos / Pendientes
+
+* Crear enlace `/proc/partitions → /proc/particion` en `/etc/fstab`.
+* Escritura de `/opt/scripts/backup_full.sh`.
+* Configuración de cron para backups.
+
+*Fin del tutorial y entregable.*
