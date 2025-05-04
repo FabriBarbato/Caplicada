@@ -2,9 +2,6 @@
 
 ## Participantes del grupo
 
-- FABRIZIO BARBATO
-- MARIA VICTORIA INFANTINO 
-- MATEO COLOMBO 
 
 ---
 
